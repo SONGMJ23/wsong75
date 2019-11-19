@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 
-#define SAMPLE_NUMBER 100
+#define SAMPLE_NUMBER 100 // Sample 100 points of ECG analog signals in a row
 
 class Project
 {
