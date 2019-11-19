@@ -8,7 +8,7 @@
 class Project
 {
 public:
-  uint16_t getECG(uint8_t pin);
+  uint16_t getECG(uint8_t pin); // Get the actual values of ECG potentials
   
 private:   
   uint8_t valueCount_=255;
