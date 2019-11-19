@@ -11,6 +11,6 @@ uint16_t Project::getECG(uint8_t pin)
   {
     valueCount_ = 0;
   }    
-  value[valueCount_] = analogRead(pin);
+  value[valueCount_] = analogRead(pin); // Read the ECG analog from a certain pin
   return (value[valueCount_]);
 }
