@@ -1,3 +1,5 @@
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include "MAX30105.h"
 #include "spo2_algorithm.h"
@@ -7,6 +9,8 @@
 Project project;
 
 MAX30105 particleSensor;
+Adafruit_MPU6050 mpu;
+
 
 #define MAX_BRIGHTNESS 255
 
@@ -33,13 +37,11 @@ byte readLED = 13; //Blinks with each data read
 void setup()
 {
   // Initialize the serial communication with the ECG sensor
-  Serial.begin(9600);
+  Serial.begin(115200); // initialize serial communication at 115200 bits per second:
   pinMode(10, INPUT); // Setup for leads off detection LO +
   pinMode(11, INPUT); // Setup for leads off detection LO -
   
   // Initialize the serial communication with Pulse ox
-  Serial.begin(115200); // initialize serial communication at 115200 bits per second:
-
   pinMode(pulseLED, OUTPUT);
   pinMode(readLED, OUTPUT);
 
@@ -54,6 +56,15 @@ void setup()
   while (Serial.available() == 0) ; //wait until user presses a key
   Serial.read();
 
+  //// Initialize the serial communication with gyro
+  if (!mpu.begin()) {
+    Serial.println("Failed to find MPU6050 chip");
+    while (1) {
+      delay(10);
+    }
+  }
+  Serial.println("MPU6050 Found!");
+
   byte ledBrightness = 60; //Options: 0=Off to 255=50mA
   byte sampleAverage = 4; //Options: 1, 2, 4, 8, 16, 32
   byte ledMode = 2; //Options: 1 = Red only, 2 = Red + IR, 3 = Red + IR + Green
@@ -62,9 +73,6 @@ void setup()
   int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
 
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
-
-  
-  // Initialize the serial communication with gyro
   
 }
 
@@ -157,6 +165,34 @@ void loop()
   }
       
   // Gyro functioning block
+  /* Take a new reading */
+  mpu.read();
+
+  /* Get new sensor events with the readings */
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  /* Print out the values */
+  Serial.print("Acceleration X: ");
+  Serial.print(a.acceleration.x);
+  Serial.print(", Y: ");
+  Serial.print(a.acceleration.y);
+  Serial.print(", Z: ");
+  Serial.print(a.acceleration.z);
+  Serial.println(" m/s^2");
+
+  Serial.print("Rotation X: ");
+  Serial.print(g.gyro.x);
+  Serial.print(", Y: ");
+  Serial.print(g.gyro.y);
+  Serial.print(", Z: ");
+  Serial.print(g.gyro.z);
+  Serial.println(" deg/s");
+
+  Serial.print("Temperature: ");
+  Serial.print(temp.temperature);
+  Serial.println(" degC");
+  Serial.println("");
   
 
   delay(20); // Interval of display
