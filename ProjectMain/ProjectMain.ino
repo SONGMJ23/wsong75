@@ -4,10 +4,10 @@
 #include "MAX30105.h"
 #include "spo2_algorithm.h"
 #include "src/Project.h"
-// We also have to include an "LCD.h" for LCD display depending on what LCD we use
+#include "src/LCD12864Shield.h"
 
 Project project;
-
+Lcd12864Shield lcddisplay(10,9,8,13,11); //Pins to LCD (demo)
 MAX30105 particleSensor;
 Adafruit_MPU6050 mpu;
 
