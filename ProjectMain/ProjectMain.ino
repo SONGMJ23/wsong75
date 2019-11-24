@@ -4,11 +4,13 @@
 #include "src/Adafruit_MPU6050.h"
 #include "src/Adafruit_Sensor.h"
 #include <Wire.h>
-//#include "src/Project.h"
-// We also have to include an "LCD.h" for LCD display depending on what LCD we use
+#include "src/Project.h"
+#include "src/LCD12864Shield.h"
 
-//Project project;
 
+
+Project project;
+Lcd12864Shield lcddisplay(10,9,8,13,11); //Pins to LCD (demo)
 MAX30105 particleSensor;
 Adafruit_MPU6050 mpu1;
 Adafruit_MPU6050 mpu2;
