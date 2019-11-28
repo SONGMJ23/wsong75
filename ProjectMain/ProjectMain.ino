@@ -4,18 +4,12 @@
 #include "src/Adafruit_MPU6050.h"
 #include "src/Adafruit_Sensor.h"
 #include <Wire.h>
-#include "src/Project.h"
-#include "src/LCD12864Shield.h"
+#include "Adafruit_ssd1306syp.h" //See the "ssd1306" directory
 
-
-
-Project project;
-Lcd12864Shield lcddisplay(10,9,8,13,11); //Pins to LCD (demo)
 MAX30105 particleSensor;
 Adafruit_MPU6050 mpu1;
 Adafruit_MPU6050 mpu2;
-
-
+Adafruit_ssd1306syp oled(9,8);
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
@@ -26,7 +20,6 @@ uint16_t redBuffer[50];  //red LED sensor data
 uint32_t irBuffer[50]; //infrared LED sensor data
 uint32_t redBuffer[50];  //red LED sensor data
 #endif
-
 
 const int MAX_BRIGHTNESS  = 255;
 int32_t bufferLength; //data length
@@ -46,10 +39,7 @@ void setup()
   Serial.begin(115200); // initialize serial communication at 115200 bits per second:
   while (!Serial)
     delay(10); 
-//  pinMode(10, INPUT); // Setup for leads off detection LO +
-//  pinMode(11, INPUT); // Setup for leads off detection LO -
 
-  
   // Initialize the serial communication with Pulse ox
   pinMode(pulseLED, OUTPUT);
   pinMode(readLED, OUTPUT);
@@ -100,29 +90,12 @@ Serial.println(F("Adafruit MPU6050 test!"));
 
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
   
+  //OLED initialize
+  oled.initialize();
 }
 
 void loop() 
-{
-  // ECG functioning block
-//  if ((digitalRead(10) == 1)||(digitalRead(11) == 1))
-//  {
-//    Serial.println('!'); // No current inputs!
-//  }
-//  else
-//  {
-//    static unsigned char count;
-//    static unsigned int value[SAMPLE_NUMBER];
-//    value[count] = project.getECG(A0); //ECG values sampled by A0 foot
-//    count++;
-//    if (count >= SAMPLE_NUMBER)
-//    {
-//      count = 0; // Start a new sampling row
-//    }
-//    // ECG waveform's LCD display
-//    
-//  } 
-  
+{ 
   // Pulse ox functioning block
   bufferLength = 50; //buffer length of 100 stores 4 seconds of samples running at 25sps
 
@@ -241,6 +214,16 @@ void loop()
   Serial.println(" degC");
   Serial.println("");
   
-
+  //Buzzer & OLED display demo
+  if (validSPO2 > 0.1)
+  {
+    tone(8,1000,250); //Buzzing
+  }
+  oled.setTextSize(2);
+  oled.setTextColor(WHITE);
+  oled.setCursor(0,0);
+  oled.println("validSPO2:");
+  oled.println(validSPO2);
+  oled.update();
   //delay(20); // Interval of display
 }
