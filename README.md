@@ -1,4 +1,4 @@
 # wsong75
 Georgia Tech
 
-Please feel free to add to these files your part of codes.
+I separate the PC-monitored ECG from the OLED-monitored main project.
