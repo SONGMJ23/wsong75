@@ -147,15 +147,6 @@ void loop()
     }
     Serial.println(BPM);
     a++;
-    
-    //Simplified version of spO2 and gyro. Add your codes below.
-    
-    
-    //Conditions for buzzing. You can add any condition you want, probably regarding the spO2 & gyro.
-    if (BPM > 85)
-    {
-      tone(8,1000,250); //Pin 8, change 1000 and 250 to modify the melody.
-    }
   }
 
   //Pulse ox functioning block
@@ -270,6 +261,11 @@ void loop()
   Serial.println(" degC");
   Serial.println("");
   
+  //Conditions for buzzing. You can add any condition you want, probably regarding the spO2 & gyro.
+  if (BPM > 85)
+  {
+    tone(8,1000,250); //Pin 8, change 1000 and 250 to modify the melody.
+  }
   
   /*OLED display*/
   //oled.clear();
