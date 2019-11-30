@@ -20,7 +20,7 @@ int BPM=0;
 MAX30105 particleSensor;
 Adafruit_MPU6050 mpu1;
 Adafruit_MPU6050 mpu2;
-//Adafruit_ssd1306syp oled(9,8);
+//Adafruit_ssd1306syp oled(A4,A5);
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
@@ -38,7 +38,7 @@ int32_t bufferLength; //data length
 int32_t spo2; //SPO2 value
 int8_t validSPO2; //indicator to show if the SPO2 calculation is valid
 
-byte pulseLED = 11; //Must be on PWM pin
+byte pulseLED = 9; //Must be on PWM pin
 byte readLED = 13; //Blinks with each data read
 
 int counter = 0;
