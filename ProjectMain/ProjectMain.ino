@@ -1,10 +1,11 @@
-//#include "Adafruit_ssd1306syp.h" //OLED lib
 #include "src/MAX30105.h"
 #include "src/spo2_algorithm.h"
 #include "src/Adafruit_MPU6050.h"
 #include "src/Adafruit_Sensor.h"
 #include <SPI.h>
 #include <Wire.h>
+#include "src/SSD1306Ascii.h"
+#include "src/SSD1306AsciiAvrI2c.h"
 
 int a=0;
 int lasta=0;
@@ -20,16 +21,23 @@ int BPM=0;
 MAX30105 particleSensor;
 Adafruit_MPU6050 mpu1;
 Adafruit_MPU6050 mpu2;
-//Adafruit_ssd1306syp oled(A4,A5);
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C
+#define OLED_RESET     4 // Reset pin # (or -1 if sharing Arduino reset pin)
+
+SSD1306AsciiAvrI2c oled;
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
 //To solve this problem, 16-bit MSB of the sampled data will be truncated. Samples become 16-bit data.
-uint16_t irBuffer[50]; //infrared LED sensor data
-uint16_t redBuffer[50];  //red LED sensor data
+uint16_t irBuffer[100]; //infrared LED sensor data
+uint16_t redBuffer[100];  //red LED sensor data
 #else
-uint32_t irBuffer[50]; //infrared LED sensor data
-uint32_t redBuffer[50];  //red LED sensor data
+uint32_t irBuffer[100]; //infrared LED sensor data
+uint32_t redBuffer[100];  //red LED sensor data
 #endif
 
 
@@ -45,10 +53,19 @@ int counter = 0;
 
 void setup()
 {
-  // Initialize the serial communication with the ECG sensor
+
   Serial.begin(115200); // initialize serial communication at 115200 bits per second:
   while (!Serial)
     delay(10); 
+
+
+  oled.begin(&Adafruit128x64, 0x3C, OLED_RESET);
+  oled.setFont(Adafruit5x7);
+  oled.clear();
+  oled.set2X();
+  oled.println(F("Opiod\nOverdose\nMonitor!"));
+
+  // Initialize the serial communication with the ECG sensor
   pinMode(10, INPUT); // Setup for leads off detection LO +
   pinMode(11, INPUT); // Setup for leads off detection LO -
   
@@ -65,7 +82,7 @@ void setup()
       delay(10);
     }
   }
-  Serial.println("MPU6050 1 Found!");
+  Serial.println(F("MPU6050 1 Found!"));
 
     //// Initialize the serial communication with gyro
   if (!mpu2.begin(0x69, &Wire, 1)) {
@@ -74,7 +91,7 @@ void setup()
       delay(10);
     }
   }
-  Serial.println("MPU6050 2 Found!");
+  Serial.println(F("MPU6050 2 Found!"));
 
   mpu1.setAccelerometerRange(MPU6050_RANGE_8_G);
   mpu2.setAccelerometerRange(MPU6050_RANGE_8_G);
@@ -100,8 +117,6 @@ void setup()
   int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
 
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
-  
-  //oled.initialize();
 }
 
 void loop()
@@ -109,7 +124,7 @@ void loop()
   //New ECG functioning block taking only 8% of memory or so.
   if ((digitalRead(10) == 1)||(digitalRead(11) == 1))
   {
-    Serial.println('!'); // No current inputs!
+    Serial.println(F("No current inputs!")); // No current inputs!
   }
   else
   {
@@ -173,14 +188,14 @@ void loop()
   
   //Continuously taking samples from MAX30102.  SpO2 are calculated every 1 second
   //dumping the first 25 sets of samples in the memory and shift the last 25 sets of samples to the top
-  for (byte i = 12; i < 50; i++)
+  for (byte i = 25; i < 100; i++)
   {
-    redBuffer[i - 12] = redBuffer[i];
-    irBuffer[i - 12] = irBuffer[i];
+    redBuffer[i - 25] = redBuffer[i];
+    irBuffer[i - 25] = irBuffer[i];
   }
 
   //take 25 sets of samples before calculating the heart rate.
-  for (byte i = 38; i < 50; i++)
+  for (byte i = 75; i < 100; i++)
   {
     while (particleSensor.available() == false) //do we have new data?
       particleSensor.check(); //Check the sensor for new data
@@ -218,48 +233,38 @@ void loop()
   mpu2.getEvent(&a2, &g2, &temp2);
 
   /* Print out the values */
-  Serial.print("Acceleration X Gyro 1: ");
+  Serial.print(F("Acceleration X Gyro 1: "));
   Serial.print(a1.acceleration.x);
-  Serial.print(", Y: ");
+  Serial.print(F(", Y: "));
   Serial.print(a1.acceleration.y);
-  Serial.print(", Z: ");
+  Serial.print(F(", Z: "));
   Serial.print(a1.acceleration.z);
   Serial.println(" m/s^2");
 
-  Serial.print("Rotation X Gyro 1: ");
+  Serial.print(F("Rotation X Gyro 1: "));
   Serial.print(g2.gyro.x);
-  Serial.print(", Y: ");
+  Serial.print(F(", Y: "));
   Serial.print(g2.gyro.y);
-  Serial.print(", Z: ");
+  Serial.print(F(", Z: "));
   Serial.print(g2.gyro.z);
-  Serial.println(" deg/s");
-
-  Serial.print("Temperature Gyro 1: ");
-  Serial.print(temp1.temperature);
-  Serial.println(" degC");
-  Serial.println("");
+  Serial.println(F(" deg/s"));
 
   /* Print out the values */
-  Serial.print("Acceleration X Gyro 2: ");
+  Serial.print(F("Acceleration X Gyro 2: "));
   Serial.print(a2.acceleration.x);
-  Serial.print(", Y: ");
+  Serial.print(F(", Y: "));
   Serial.print(a2.acceleration.y);
-  Serial.print(", Z: ");
+  Serial.print(F(", Z: "));
   Serial.print(a2.acceleration.z);
-  Serial.println(" m/s^2");
+  Serial.println(F(" m/s^2"));
 
-  Serial.print("Rotation X Gyro 2: ");
+  Serial.print(F("Rotation X Gyro 2: "));
   Serial.print(g2.gyro.x);
-  Serial.print(", Y: ");
+  Serial.print(F(", Y: "));
   Serial.print(g2.gyro.y);
-  Serial.print(", Z: ");
+  Serial.print(F(", Z: "));
   Serial.print(g2.gyro.z);
-  Serial.println(" deg/s");
-
-  Serial.print("Temperature Gyro 2: ");
-  Serial.print(temp2.temperature);
-  Serial.println(" degC");
-  Serial.println("");
+  Serial.println(F(" deg/s"));
   
   //Conditions for buzzing. You can add any condition you want, probably regarding the spO2 & gyro.
   if (BPM > 85)
@@ -267,11 +272,17 @@ void loop()
     tone(8,1000,250); //Pin 8, change 1000 and 250 to modify the melody.
   }
   
-  /*OLED display*/
-  //oled.clear();
-  //oled.setTextSize(2);
-  //oled.setTextColor(WHITE);
-  //oled.setCursor(0,0);
-  //oled.println(BPM);
-  //oled.update();
+//  /*OLED display update*/
+  oled.clear();
+  oled.set2X();
+  oled.print(F("\nBPM: "));
+  oled.println(BPM);
+  if (validSPO2 != 0){
+    oled.set1X();
+    oled.print(F("\nOxygen Sat: "));
+    oled.println(spo2, DEC);
+    oled.print(F("\nResp Rate: "));
+    oled.println(spo2, DEC);
+  }
+  
 }
