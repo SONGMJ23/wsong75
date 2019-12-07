@@ -158,7 +158,7 @@ boolean MAX30105::begin(TwoWire &wirePort, uint32_t i2cSpeed, uint8_t i2caddr) {
 
   // Populate revision ID
   readRevisionID();
-  
+
   return true;
 }
 
@@ -221,7 +221,7 @@ void MAX30105::softReset(void) {
   {
     uint8_t response = readRegister8(_i2caddr, MAX30105_MODECONFIG);
     if ((response & MAX30105_RESET) == 0) break; //We're done!
-    delay(1); //Let's not over burden the I2C bus
+    //delay(1); //Let's not over burden the I2C bus
   }
 }
 
@@ -364,10 +364,10 @@ uint8_t MAX30105::getReadPointer(void) {
 // Die Temperature
 // Returns temp in C
 float MAX30105::readTemperature() {
-	
+
   //DIE_TEMP_RDY interrupt must be enabled
   //See issue 19: https://github.com/sparkfun/SparkFun_MAX3010x_Sensor_Library/issues/19
-  
+
   // Step 1: Config die temperature register to take 1 temperature sample
   writeRegister8(_i2caddr, MAX30105_DIETEMPCONFIG, 0x01);
 
@@ -378,7 +378,7 @@ float MAX30105::readTemperature() {
   {
     //uint8_t response = readRegister8(_i2caddr, MAX30105_DIETEMPCONFIG); //Original way
     //if ((response & 0x01) == 0) break; //We're done!
-    
+
 	//Check to see if DIE_TEMP_RDY interrupt is set
 	uint8_t response = readRegister8(_i2caddr, MAX30105_INTSTAT2);
     if ((response & MAX30105_INT_DIE_TEMP_RDY_ENABLE) > 0) break; //We're done!
@@ -634,7 +634,7 @@ uint16_t MAX30105::check(void)
 
       //Request toGet number of bytes from sensor
       _i2cPort->requestFrom(MAX30105_ADDRESS, toGet);
-      
+
       while (toGet > 0)
       {
         sense.head++; //Advance the head of the storage struct
@@ -651,7 +651,7 @@ uint16_t MAX30105::check(void)
 
         //Convert array to long
         memcpy(&tempLong, temp, sizeof(tempLong));
-		
+
 		tempLong &= 0x3FFFF; //Zero out all but 18 bits
 
         sense.red[sense.head] = tempLong; //Store this reading into the sense array
@@ -668,7 +668,7 @@ uint16_t MAX30105::check(void)
           memcpy(&tempLong, temp, sizeof(tempLong));
 
 		  tempLong &= 0x3FFFF; //Zero out all but 18 bits
-          
+
 		  sense.IR[sense.head] = tempLong;
         }
 
@@ -704,7 +704,7 @@ uint16_t MAX30105::check(void)
 bool MAX30105::safeCheck(uint8_t maxTimeToCheck)
 {
   uint32_t markTime = millis();
-  
+
   while(1)
   {
 	if(millis() - markTime > maxTimeToCheck) return(false);
@@ -712,7 +712,7 @@ bool MAX30105::safeCheck(uint8_t maxTimeToCheck)
 	if(check() == true) //We found new data!
 	  return(true);
 
-	delay(1);
+	//delay(1);
   }
 }
 
