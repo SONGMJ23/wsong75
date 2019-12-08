@@ -7,9 +7,6 @@
 #include "src/SSD1306Ascii.h"
 #include "src/SSD1306AsciiAvrI2c.h"
 
-int a=0;
-int lasta=0;
-int lastb=0;
 int LastTime=0;
 int ThisTime;
 bool BPMTiming=false;
@@ -33,13 +30,12 @@ SSD1306AsciiAvrI2c oled;
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //Arduino Uno doesn't have enough SRAM to store 100 samples of IR led data and red led data in 32-bit format
 //To solve this problem, 16-bit MSB of the sampled data will be truncated. Samples become 16-bit data.
-uint16_t irBuffer[100]; //infrared LED sensor data
-uint16_t redBuffer[100];  //red LED sensor data
+uint16_t irBuffer[50]; //infrared LED sensor data
+uint16_t redBuffer[50];  //red LED sensor data
 #else
-uint32_t irBuffer[100]; //infrared LED sensor data
-uint32_t redBuffer[100];  //red LED sensor data
+uint32_t irBuffer[50]; //infrared LED sensor data
+uint32_t redBuffer[50];  //red LED sensor data
 #endif
-
 
 const int MAX_BRIGHTNESS  = 255;
 int32_t bufferLength; //data length
@@ -49,6 +45,7 @@ int8_t validSPO2; //indicator to show if the SPO2 calculation is valid
 
 byte pulseLED = 9; //Must be on PWM pin
 byte readLED = 13; //Blinks with each data read
+
 double ax, ay, az, gx, gy, gz;
 double ax_i, ay_i, az_i, gx_i, gy_i, gz_i;
 
@@ -61,29 +58,24 @@ int i;
 
 void setup()
 {
-
-  Serial.begin(115200); // initialize serial communication at 115200 bits per second:
-//  while (!Serial)
-//    delay(10); 
-
+  // Initialize the serial communication with the ECG sensor
+  Serial.begin(115200); // initialize serial communication at 115200 bits per second: 
 
   oled.begin(&Adafruit128x64, 0x3C, OLED_RESET);
   oled.setFont(Adafruit5x7);
   oled.clear();
   oled.set2X();
   oled.println(F("Opiod\nOverdose\nMonitor!"));
-
-  // Initialize the serial communication with the ECG sensor
+  
   pinMode(10, INPUT); // Setup for leads off detection LO +
   pinMode(11, INPUT); // Setup for leads off detection LO -
   
-  // Initialize the serial communication with Pulse ox
+  // Initialize the serial communication with MPU6050
   pinMode(pulseLED, OUTPUT);
   pinMode(readLED, OUTPUT);
-
   Serial.println(F("Adafruit MPU6050 test!"));
 
-  //// Initialize the serial communication with gyro
+  // Initialize the serial communication with gyro 1
   if (!mpu1.begin(MPU6050_I2CADDR_DEFAULT, &Wire, 0)) {
     Serial.println(F("Failed to find MPU6050 1 chip"));
     while (1) {
@@ -92,7 +84,7 @@ void setup()
   }
   Serial.println(F("MPU6050 1 Found!"));
 
-//    //// Initialize the serial communication with gyro
+//  // Initialize the serial communication with gyro 2
 //  if (!mpu2.begin(0x69, &Wire, 1)) {
 //    Serial.println(F("Failed to find MPU6050 2 chip"));
 //    while (1) {
@@ -114,7 +106,6 @@ void setup()
   }
 
   Serial.println(F("Attach sensor to finger with rubber band. Press any key to start conversion"));
-  //while (Serial.available() == 0) ; //wait until user presses a key
   Serial.read();
 
   byte ledBrightness = 60; //Options: 0=Off to 255=50mA
@@ -132,36 +123,63 @@ void setup()
 
 void loop()
 {
-//  //Pulse ox functioning block
-//    bufferLength = 50; //buffer length of 100 stores 4 seconds of samples running at 25sps
-//
-//  //read the first 100 samples, and determine the signal range
-//  for (byte i = 0 ; i < bufferLength ; i++)
-//  {
-//    while (particleSensor.available() == false) //do we have new data?
-//      particleSensor.check(); //Check the sensor for new data
-//
-//    redBuffer[i] = particleSensor.getRed();
-//    irBuffer[i] = particleSensor.getIR();
-//    particleSensor.nextSample(); //We're finished with this sample so move to next sample
-//    ecg_method();
-//
-//    Serial.print(F("red="));
-//    Serial.print(redBuffer[i], DEC);
-//    Serial.print(F(", ir="));
-//    Serial.println(irBuffer[i], DEC);
-//  }
-//
-//  //calculate SpO2 after first 100 samples (first 4 seconds of samples)
-//  maxim_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2);
-//  
+  if ((digitalRead(10) == 1)||(digitalRead(11) == 1))
+  {
+    Serial.println('!'); // No current inputs!
+  }
+  else
+  {
+    for (int a = 0; a < 200; a++)
+    {
+      ThisTime=millis();
+      int value=analogRead(A0);
+      Serial.print(F("Analog value: "));
+      Serial.println(value);
+      int b=60-(value/16);
+
+      if(value>UpperThreshold)
+      {
+        if(BeatComplete)
+        {
+          BPM=ThisTime-LastTime;
+          BPM=int(60/(float(BPM)/1000));
+          BPMTiming=false;
+          BeatComplete=false;
+        }
+        if(BPMTiming==false)
+        {
+          LastTime=millis();
+          BPMTiming=true;
+        }
+      }
+      if((value<LowerThreshold)&(BPMTiming))
+      {
+        BeatComplete=true;
+      }
+      delay(10);
+    }
+    Serial.println(BPM);
+  }
+
+  //Pulse ox functioning block
+  bufferLength = 50;
+  //read the first 100 samples, and determine the signal range
+  for (int i = 0 ; i < bufferLength ; i++)
+  {
+    redBuffer[i] = particleSensor.getRed();
+    irBuffer[i] = particleSensor.getIR();
+    particleSensor.nextSample(); //We're finished with this sample so move to next sample
+  }
+
+  //calculate SpO2 after first 100 samples (first 4 seconds of samples)
+  maxim_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2);
+
 //  //Continuously taking samples from MAX30102.  SpO2 are calculated every 1 second
 //  //dumping the first 25 sets of samples in the memory and shift the last 25 sets of samples to the top
 //  for (byte i = 25; i < 100; i++)
 //  {
 //    redBuffer[i - 25] = redBuffer[i];
 //    irBuffer[i - 25] = irBuffer[i];
-//    ecg_method();
 //  }
 //
 //  //take 25 sets of samples before calculating the heart rate.
@@ -187,18 +205,16 @@ void loop()
 //
 //    Serial.print(F(", SPO2Valid="));
 //    Serial.println(validSPO2, DEC);
-//    ecg_method();
 //  }
 //
 //  //After gathering 25 new samples recalculate SP02
 //  maxim_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2);
-      
-  // Gyro functioning block
-  // set up time for integration
-//  timePrev = time_now;
-//  time_now = millis();
-//  timeStep = (time_now - timePrev) / 1000; // time-step in s
-  /* Take a new reading */
+
+
+
+
+
+/* Take a new reading */
   mpu1.read();
   mpu2.read();
 
@@ -289,84 +305,30 @@ void loop()
   disp = (time_now * vel)/100000000;
 //  Serial.print("Displacement: ");
 //  Serial.println(disp, DEC);
-  
 
-  
-  
-  
-  
 
+
+
+
+
+  if ((BPM > 85) || ((validSPO2 != 0) && (spo2 < 97)))
+  {
+    tone(8,1000,250);
+  }
   
-  
-//  //Conditions for buzzing. You can add any condition you want, probably regarding the spO2 & gyro.
-//  if (BPM > 85)
-//  {
-//    tone(8,1000,250); //Pin 8, change 1000 and 250 to modify the melody.
-//  }
-  
-//  /*OLED display update*/
+  /*OLED display*/
   oled.clear();
   oled.set2X();
-  oled.print(F("\nBPM: "));
+  oled.print(F("BPM: "));
   oled.println(BPM);
-  if (validSPO2 != 0){
-    oled.set1X();
-    oled.print(F("\nOxygen Sat: "));
+
+  oled.set1X();
+  oled.print(F("\n\n\nOxygen Sat: "));
+  if (validSPO2 != 0)
+  {
     oled.println(spo2, DEC);
-    oled.print(F("\nResp Rate: "));
-    oled.println(resp_rate, DEC);
   }
-
-  i++;
-
-  delay(1000);
-  
-}
-
-void ecg_method() {
-  //New ECG functioning block taking only 8% of memory or so.
-  if ((digitalRead(10) == 1)||(digitalRead(11) == 1))
-  {
-    Serial.println(F("No current inputs!")); // No current inputs!
-  }
-  else
-  {
-    // New version of HR (BPM) calculation
-    if(a>127)
-    {
-      a=0;
-      lasta=a;
-    }
-    
-    ThisTime=millis();
-    int value=analogRead(A0);
-    Serial.print(F("Analog value: "));
-    Serial.println(value);
-    int b=60-(value/16);
-    lastb=b;
-    lasta=a;
-
-    if(value>UpperThreshold)
-    {
-      if(BeatComplete)
-      {
-        BPM=ThisTime-LastTime;
-        BPM=int(60/(float(BPM)/1000));
-        BPMTiming=false;
-        BeatComplete=false;
-      }
-      if(BPMTiming==false)
-      {
-        LastTime=millis();
-        BPMTiming=true;
-      }
-    }
-    if((value<LowerThreshold)&(BPMTiming))
-    {
-      BeatComplete=true;
-    }
-    Serial.print(F("BPM value: "));
-     Serial.println(BPM);
-    a++;
-  }
+  oled.print(F("\nResp Rate: "));
+//oled.println(resp_rate, DEC);
+  delay(1);
 }
