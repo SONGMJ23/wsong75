@@ -9,11 +9,21 @@
 
 int LastTime=0;
 int ThisTime;
+int time_start;
+unsigned long time_cycle;
 bool BPMTiming=false;
 bool BeatComplete=false;
 int BPM=0;
+bool state_0 = true;
+bool state_1 = false;
+bool state_2 = false;
+bool state_3 = false;
+float resp_rate=0;
+float cycles=0;
 #define UpperThreshold 560
 #define LowerThreshold 530
+float first_threshold = 6.8;
+float second_threshold = 6.2;
 
 MAX30105 particleSensor;
 Adafruit_MPU6050 mpu1;
@@ -39,7 +49,6 @@ uint32_t redBuffer[50];  //red LED sensor data
 const int MAX_BRIGHTNESS  = 255;
 int32_t bufferLength; //data length
 int32_t spo2; //SPO2 value
-int32_t resp_rate; //resp_value
 int8_t validSPO2; //indicator to show if the SPO2 calculation is valid
 
 byte pulseLED = 9; //Must be on PWM pin
@@ -103,6 +112,9 @@ void setup()
   int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
 
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
+
+  time_start = millis();
+
 }
 
 void loop()
@@ -196,28 +208,49 @@ void loop()
 //    /* Get new sensor events with the readings */
     sensors_event_t a1, g1, temp1;   
     /* Print out the values */
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 100; i++)
     {
       mpu1.getEvent(&a1, &g1, &temp1);
-//      Serial.print(F("Acceleration X Gyro 1: "));
-//      Serial.print(a1.acceleration.x);
-//      Serial.print(F(", Y: "));
-//      Serial.print(a1.acceleration.y);
-//      Serial.print(F(", Z: "));
-//      Serial.print(a1.acceleration.z);
-//      Serial.println(" m/s^2");
-//
-//      Serial.print(F("Rotation X Gyro 1: "));
-//      Serial.print(g1.gyro.x);
-//      Serial.print(F(", Y: "));
-//      Serial.print(g1.gyro.y);
-//      Serial.print(F(", Z: "));
-//      Serial.print(g1.gyro.z);
-      double acc = sqrt(a1.acceleration.x * a1.acceleration.x + a1.acceleration.y * a1.acceleration.y + a1.acceleration.z * a1.acceleration.z);
-      double ang = sqrt(g1.gyro.x * g1.gyro.x + g1.gyro.y * g1.gyro.y + g1.gyro.z * g1.gyro.z);
+      float acc = sqrt(a1.acceleration.x * a1.acceleration.x + a1.acceleration.y * a1.acceleration.y + a1.acceleration.z * a1.acceleration.z);
+      float ang = sqrt(g1.gyro.x * g1.gyro.x + g1.gyro.y * g1.gyro.y + g1.gyro.z * g1.gyro.z);
       Serial.println(ang);
+
+      if (state_2 && ((millis() - time_cycle) > 500)) {
+//        Serial.print(F("Time elapsed: "));
+//        Serial.println(millis() - time_cycle);
+        //Serial.println(F("BACK TO STATE 0"));
+        state_2 = false;
+        state_0 = true;
+        time_cycle = 0;
+      }
+      if (state_0 && (ang >= 10.0)) {
+        state_1 = true;
+        state_0 = false;
+        //Serial.println(F("Moved into state 1"));
+        
+      }
+      else if (state_1 && ang <= first_threshold) {
+        state_2 = true;
+        state_1 = false;
+        //Serial.println(F("Moved into state 2"));
+        time_cycle = millis();
+      }
+      else if (state_2 && ang >= second_threshold) {
+        state_3 = true;
+        state_2 = false;
+        //Serial.println(F("Moved into state 3"));
+      }
+      else if (state_3 && ang <= second_threshold) {
+        state_0 = true;
+        state_3 = false;
+        
+        Serial.println(F("Moved into state 0"));
+        Serial.println(F("Cycle incremented"));
+        cycles++;
+      }
       delay(10);
     }
+    resp_rate = (60000*cycles)/(millis() - time_start);
 
 
   if ((BPM > 85) || ((validSPO2 != 0) && (spo2 < 97)))
@@ -238,6 +271,6 @@ void loop()
     oled.println(spo2, DEC);
   }
   oled.print(F("\nResp Rate: "));
-//oled.println(resp_rate, DEC);
+  oled.println(resp_rate);
   delay(1);
 }
