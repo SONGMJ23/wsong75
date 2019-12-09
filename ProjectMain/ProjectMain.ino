@@ -82,15 +82,6 @@ void setup()
   }
   Serial.println(F("MPU6050 1 Found!"));
 
-//  // Initialize the serial communication with gyro 2
-//  if (!mpu2.begin(0x69, &Wire, 1)) {
-//    Serial.println(F("Failed to find MPU6050 2 chip"));
-//    while (1) {
-//      delay(10);
-//    }
-//  }
-//  Serial.println(F("MPU6050 2 Found!"));
-
   mpu1.setAccelerometerRange(MPU6050_RANGE_8_G);
   mpu1.setGyroRange(MPU6050_RANGE_500_DEG);
 
